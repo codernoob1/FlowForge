@@ -1,0 +1,23 @@
+[
+  {
+    "id": "basic-tutorial",
+    "config": {
+      "src\\petstore\\state-audit-cron.step.ts": {
+        "x": -102,
+        "y": -88
+      },
+      "src\\petstore\\process-food-order.step.ts": {
+        "x": -94,
+        "y": 325
+      },
+      "src\\petstore\\notification.step.ts": {
+        "x": 392,
+        "y": 114
+      },
+      "src\\petstore\\api.step.ts": {
+        "x": -403,
+        "y": 159
+      }
+    }
+  }
+]
