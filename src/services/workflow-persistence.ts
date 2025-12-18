@@ -14,6 +14,7 @@ import type {
   WorkflowInstance,
   WorkflowStatus,
   StepExecution,
+  StepStatus,
   CompensationRecord,
 } from '../workflows/types'
 import { now } from '../workflows/types'
@@ -50,6 +51,9 @@ const ADVANCEABLE_STATUSES: WorkflowStatus[] = ['running']
 /** Statuses that indicate workflow has ended */
 const TERMINAL_STATUSES: WorkflowStatus[] = ['completed', 'compensated', 'failed']
 
+/** Step statuses that indicate step has reached a final state */
+const TERMINAL_STEP_STATUSES: StepStatus[] = ['completed', 'failed', 'skipped', 'compensated']
+
 /** Check if workflow can advance to next step */
 function canAdvance(status: WorkflowStatus): boolean {
   return ADVANCEABLE_STATUSES.includes(status)
@@ -58,6 +62,11 @@ function canAdvance(status: WorkflowStatus): boolean {
 /** Check if workflow has ended */
 function isTerminal(status: WorkflowStatus): boolean {
   return TERMINAL_STATUSES.includes(status)
+}
+
+/** Check if step has reached a terminal state (cannot be modified) */
+function isStepTerminal(status: StepStatus): boolean {
+  return TERMINAL_STEP_STATUSES.includes(status)
 }
 
 // ============================================================================
@@ -259,6 +268,9 @@ export const workflowPersistence = {
 
   /**
    * Record step completion
+   * 
+   * Idempotent: Returns existing execution if step is already in a terminal state.
+   * This prevents overwriting a failed/compensated step with completion.
    */
   async recordStepComplete(
     state: StateManager,
@@ -270,8 +282,9 @@ export const workflowPersistence = {
     const execution = await state.get<StepExecution>(groupId, stepName)
     if (!execution) return null
 
-    // Only update if step is running (idempotent - skip if already completed)
-    if (execution.status === 'completed') {
+    // Guard: Skip if step is already in any terminal state
+    // This prevents overwriting failed/compensated steps with completion
+    if (isStepTerminal(execution.status)) {
       return execution
     }
 
@@ -288,6 +301,9 @@ export const workflowPersistence = {
 
   /**
    * Record step failure
+   * 
+   * Idempotent: Returns existing execution if step is already in a terminal state.
+   * This prevents overwriting a completed/compensated step with failure.
    */
   async recordStepFailure(
     state: StateManager,
@@ -299,8 +315,9 @@ export const workflowPersistence = {
     const execution = await state.get<StepExecution>(groupId, stepName)
     if (!execution) return null
 
-    // Only update if step is running (idempotent - skip if already failed)
-    if (execution.status === 'failed') {
+    // Guard: Skip if step is already in any terminal state
+    // This prevents overwriting completed/compensated steps with failure
+    if (isStepTerminal(execution.status)) {
       return execution
     }
 
