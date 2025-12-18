@@ -19,5 +19,86 @@
         "y": 159
       }
     }
+  },
+  {
+    "id": "order-workflow",
+    "config": {
+      "src\\steps\\order\\validate-order.step.ts": {
+        "x": 46,
+        "y": 588
+      },
+      "src\\steps\\order\\reserve-inventory.step.ts": {
+        "x": 952,
+        "y": 146
+      },
+      "src\\steps\\order\\release-inventory.step.ts": {
+        "x": 2240,
+        "y": 306
+      },
+      "src\\steps\\order\\refund-payment.step.ts": {
+        "x": 2240,
+        "y": 150
+      },
+      "src\\steps\\order\\notify-user.step.ts": {
+        "x": 942,
+        "y": 418
+      },
+      "src\\steps\\order\\create-shipment.step.ts": {
+        "x": 961,
+        "y": 282
+      },
+      "src\\steps\\order\\complete.step.ts": {
+        "x": 1311,
+        "y": 828
+      },
+      "src\\steps\\order\\charge-payment.step.ts": {
+        "x": 973,
+        "y": 10
+      },
+      "src\\steps\\order\\cancel-shipment.step.ts": {
+        "x": 2240,
+        "y": 462
+      },
+      "src\\steps\\engine\\step-failed.step.ts": {
+        "x": 1242,
+        "y": 248
+      },
+      "src\\steps\\engine\\step-completed.step.ts": {
+        "x": 288,
+        "y": 0
+      },
+      "src\\steps\\engine\\execute-step.step.ts": {
+        "x": 638,
+        "y": 520
+      },
+      "src\\steps\\engine\\execute-compensation.step.ts": {
+        "x": 1956,
+        "y": 570
+      },
+      "src\\steps\\engine\\compensation-completed.step.ts": {
+        "x": 2590,
+        "y": 258
+      },
+      "src\\steps\\engine\\compensate.step.ts": {
+        "x": 1592,
+        "y": 248
+      },
+      "src\\steps\\api\\start-workflow.step.ts": {
+        "x": 346,
+        "y": 435
+      },
+      "src\\steps\\api\\signal-workflow.step.ts": {
+        "x": 292,
+        "y": 639
+      },
+      "src\\steps\\api\\list-workflows.step.ts": {
+        "x": -149,
+        "y": 655
+      },
+      "src\\steps\\api\\get-workflow.step.ts": {
+        "x": 51,
+        "y": 979
+      }
+    }
   }
 ]

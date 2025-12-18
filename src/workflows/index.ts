@@ -25,3 +25,11 @@ export {
   type CompensationResult,
 } from './compensator'
 
+// Order Workflow
+export {
+  OrderWorkflowDefinition,
+  ORDER_TOPICS,
+  registerOrderWorkflow,
+  type OrderInput,
+} from './order-workflow'
+

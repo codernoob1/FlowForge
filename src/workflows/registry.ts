@@ -15,11 +15,12 @@ const workflows = new Map<string, WorkflowDefinition>()
 
 export const workflowRegistry = {
   /**
-   * Register a workflow definition
+   * Register a workflow definition (idempotent)
    */
   register(definition: WorkflowDefinition): void {
+    // Idempotent: skip if already registered
     if (workflows.has(definition.type)) {
-      throw new Error(`Workflow type "${definition.type}" is already registered`)
+      return
     }
     workflows.set(definition.type, definition)
   },
