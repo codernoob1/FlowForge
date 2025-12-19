@@ -24,7 +24,7 @@ const bodySchema = z.object({
     items: z.array(z.object({
       sku: z.string(),
       name: z.string(),
-      quantity: z.number().int().positive(),
+      quantity: z.number().min(1),
       price: z.number().nonnegative(),
     })).min(1),
     shippingAddress: z.object({

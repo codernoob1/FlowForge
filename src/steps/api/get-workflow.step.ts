@@ -23,7 +23,7 @@ export const config: ApiRouteConfig = {
         id: z.string(),
         type: z.string(),
         status: z.string(),
-        currentStep: z.string().nullable(),
+        currentStep: z.union([z.string(), z.null()]),
         context: z.record(z.string(), z.any()),
         failedStep: z.string().optional(),
         error: z.string().optional(),
