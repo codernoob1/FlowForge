@@ -52,13 +52,15 @@ export const handler: Handlers['ValidateOrder'] = async (input, ctx) => {
         errors: validationResult.errors,
       })
 
+      const errors = validationResult.errors?.join(', ') ?? 'unknown validation errors'
+
       await ctx.emit({
         topic: ENGINE_TOPICS.STEP_FAILED,
         data: {
           workflowId,
           stepName,
           error: {
-            message: `Validation failed: ${validationResult.errors?.join(', ')}`,
+            message: `Validation failed: ${errors}`,
             code: 'VALIDATION_ERROR',
           },
         },

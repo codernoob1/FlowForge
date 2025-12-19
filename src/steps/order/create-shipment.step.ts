@@ -37,7 +37,7 @@ export const config: EventConfig = {
   description: 'Creates shipping label for order',
   subscribes: [ORDER_TOPICS.CREATE_SHIPMENT],
   emits: [ENGINE_TOPICS.STEP_COMPLETED, ENGINE_TOPICS.STEP_FAILED],
-  input: inputSchema,
+  input: inputSchema as any,
   flows: ['order-workflow'],
 }
 
