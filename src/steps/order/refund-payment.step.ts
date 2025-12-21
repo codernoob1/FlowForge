@@ -295,6 +295,7 @@ export const handler: Handlers['RefundPayment'] = async (input, ctx) => {
       })
 
       // Notify user about refund (fire-and-forget, don't fail compensation)
+      let notificationError: string | undefined
       try {
         await withTimeout(
           notificationService.send({
@@ -308,9 +309,21 @@ export const handler: Handlers['RefundPayment'] = async (input, ctx) => {
         )
       } catch (notifyError) {
         // Log but don't fail - notification is non-critical
+        notificationError = notifyError instanceof Error ? notifyError.message : 'Unknown notification error'
         ctx.logger.warn('[Compensation] Refund notification failed (non-critical)', {
           workflowId,
-          error: notifyError instanceof Error ? notifyError.message : 'Unknown',
+          refundId: result.refundId,
+          error: notificationError,
+        })
+      }
+
+      // Log final refund success with notification status for monitoring
+      if (notificationError) {
+        ctx.logger.info('[Compensation] Refund completed successfully (notification failed)', {
+          workflowId,
+          refundId: result.refundId,
+          amount,
+          notificationError,
         })
       }
 

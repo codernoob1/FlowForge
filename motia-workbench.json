@@ -40,8 +40,8 @@
         "y": 150
       },
       "src\\steps\\order\\notify-user.step.ts": {
-        "x": 942,
-        "y": 418
+        "x": 956,
+        "y": 456
       },
       "src\\steps\\order\\create-shipment.step.ts": {
         "x": 961,
