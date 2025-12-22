@@ -1,6 +1,4 @@
-// Use empty string for relative URLs (uses Vite proxy in dev)
-// In production, set VITE_API_BASE to the actual backend URL
-const API_BASE = import.meta.env.VITE_API_BASE ?? ''
+const API_BASE = import.meta.env.VITE_API_BASE
 
 export async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
   const url = `${API_BASE}${path}`
