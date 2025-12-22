@@ -199,27 +199,19 @@ export const workflowEngine = {
       })
 
       if (execution.status === 'completed') {
-        // Step already completed, emit completion to continue
-        await emit({
-          topic: ENGINE_TOPICS.STEP_COMPLETED,
-          data: {
-            workflowId,
-            stepName,
-            output: execution.output ?? {},
-          },
+        // Step already completed - do NOT re-emit to avoid event loops
+        logger.info('Step already completed, skipping re-execution', {
+          workflowId,
+          stepName,
         })
         return
       }
 
       if (execution.status === 'failed') {
-        // Step already failed
-        await emit({
-          topic: ENGINE_TOPICS.STEP_FAILED,
-          data: {
-            workflowId,
-            stepName,
-            error: execution.error ?? { message: 'Unknown error' },
-          },
+        // Step already failed - do NOT re-emit to avoid event loops
+        logger.info('Step already failed, skipping re-execution', {
+          workflowId,
+          stepName,
         })
         return
       }
@@ -259,6 +251,16 @@ export const workflowEngine = {
     const workflow = await workflowPersistence.getWorkflow(state, workflowId)
     if (!workflow) {
       logger.error('Workflow not found on step completion', { workflowId })
+      return
+    }
+
+    // Prevent processing if workflow is in terminal or failed state
+    if (['completed', 'failed', 'compensating', 'compensated', 'cancelled'].includes(workflow.status)) {
+      logger.info('Workflow already in terminal state, skipping step completion', {
+        workflowId,
+        stepName,
+        currentStatus: workflow.status,
+      })
       return
     }
 
@@ -338,6 +340,23 @@ export const workflowEngine = {
   ): Promise<void> {
     const { state, emit, logger } = ctx
     const { workflowId, stepName, error } = params
+
+    // Get workflow to check current status
+    const workflow = await workflowPersistence.getWorkflow(state, workflowId)
+    if (!workflow) {
+      logger.error('Workflow not found for step failure', { workflowId })
+      return
+    }
+
+    // Prevent duplicate compensation triggers
+    if (['failed', 'compensating', 'compensated', 'cancelled'].includes(workflow.status)) {
+      logger.info('Step failure already handled, skipping', {
+        workflowId,
+        stepName,
+        currentStatus: workflow.status,
+      })
+      return
+    }
 
     logger.error('Step failed', { workflowId, stepName, error })
 

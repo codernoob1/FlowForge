@@ -21,7 +21,7 @@ import { SagaVisualizer } from './components/SagaVisualizer'
 import { WorkflowForm } from './components/WorkflowForm'
 import { Badge } from './components/ui/Badge'
 import { ToastBanner } from './components/Toast'
-import { WorkflowSimulator } from './services/workflowSimulator'
+// Removed WorkflowSimulator - only real backend calls now
 import type {
   Toast,
   WorkflowDetail,
@@ -30,49 +30,7 @@ import type {
   WorkflowSummary,
 } from './types'
 
-function simToDetail(wf: WorkflowInstance): WorkflowDetail {
-  const createdAt = wf.createdAt ?? new Date().toISOString()
-  const updatedAt = wf.updatedAt ?? createdAt
-  return {
-    workflow: {
-      id: wf.id,
-      type: wf.type ?? 'OrderWorkflow',
-      status: wf.status,
-      currentStep: wf.currentStep ?? null,
-      context: (wf as any).context ?? {},
-      failedStep: (wf as any).failedStep,
-      error: (wf as any).error,
-      createdAt,
-      updatedAt,
-    },
-    steps: wf.steps.map(step => ({
-      stepName: step.stepName ?? step.label ?? step.id ?? 'step',
-      status: step.status,
-      startedAt: step.startedAt ?? createdAt,
-      completedAt: step.completedAt,
-      output: (step as any).output,
-      error: step.error
-        ? typeof step.error === 'string'
-          ? { message: step.error }
-          : { message: step.error.message, code: (step as any).error?.code }
-        : undefined,
-    })),
-    compensations: wf.compensations ?? [],
-  }
-}
-
-function simToSummary(wf: WorkflowInstance): WorkflowSummary {
-  const createdAt = wf.createdAt ?? new Date().toISOString()
-  const updatedAt = wf.updatedAt ?? createdAt
-  return {
-    id: wf.id,
-    type: wf.type ?? 'OrderWorkflow',
-    status: wf.status,
-    currentStep: wf.currentStep ?? null,
-    createdAt,
-    updatedAt,
-  }
-}
+// Removed simulator helper functions - only real backend calls now
 
 function App() {
   const [workflows, setWorkflows] = useState<WorkflowSummary[]>([])
@@ -83,7 +41,7 @@ function App() {
   const [toast, setToast] = useState<Toast>(null)
   const [loadingList, setLoadingList] = useState(false)
   const [loadingDetail, setLoadingDetail] = useState(false)
-  const [mode, setMode] = useState<'api' | 'sim'>('api')
+  // Removed mode toggle - always use real backend API
 
   const activeWorkflow: WorkflowInstance | null = useMemo(() => {
     if (!detail) return null
@@ -112,15 +70,11 @@ function App() {
   }, [workflows])
 
   const refreshList = async () => {
-    if (mode !== 'api') return // simulator uses local state only
     setLoadingList(true)
     try {
       const data = await listWorkflows()
       setWorkflows(data.workflows)
-      if (!activeWorkflowId && data.workflows.length > 0) {
-        setActiveWorkflowId(data.workflows[0].id)
-        void loadDetail(data.workflows[0].id)
-      }
+      // Don't auto-select a workflow - let user click to view or use the form to create
     } catch (err) {
       setToast({ type: 'error', msg: (err as Error).message })
       setTimeout(() => setToast(null), 4000)
@@ -138,15 +92,8 @@ function App() {
     setActiveWorkflowId(id)
     setLoadingDetail(true)
     try {
-      if (mode === 'api') {
-        const data = await getWorkflow(id)
-        setDetail(data)
-      } else {
-        const wf = workflows.find(w => w.id === id)
-        if (wf && (wf as any)._simDetail) {
-          setDetail((wf as any)._simDetail)
-        }
-      }
+      const data = await getWorkflow(id)
+      setDetail(data)
     } catch (err) {
       showToast('error', (err as Error).message)
     } finally {
@@ -155,50 +102,20 @@ function App() {
   }
 
   const handleStartWorkflow = async (input: unknown) => {
+    console.log('[App] handleStartWorkflow called, input:', input)
     setIsProcessing(true)
     try {
-      if (mode === 'api') {
-        const res = await startWorkflow(input)
-        const newId = (res as any)?.workflowId
-        showToast('success', 'Workflow started')
-        await refreshList()
-        if (newId) {
-          await loadDetail(newId)
-        }
-      } else {
-        const wf = WorkflowSimulator.create(input)
-        const detailFromSim = simToDetail(wf)
-        const summaryFromSim = simToSummary(wf)
-        setWorkflows(prev => [{ ...summaryFromSim, _simDetail: detailFromSim } as any, ...prev])
-        setDetail(detailFromSim)
-        setActiveWorkflowId(wf.id)
-        showToast('success', 'Simulated workflow started')
-        // Execute steps sequentially
-        for (let i = 0; i < wf.steps.length; i++) {
-          const ok = await WorkflowSimulator.runStep(wf, i, updated => {
-            const d = simToDetail(updated)
-            const s = simToSummary(updated)
-            setWorkflows(prev =>
-              prev.map(w => (w.id === updated.id ? ({ ...s, _simDetail: d } as any) : w))
-            )
-            setDetail(d)
-          })
-          if (!ok) break
-        }
-        // If success mark completed
-        const allDone = wf.steps.every(s => s.status === 'COMPLETED')
-        if (allDone) {
-          wf.status = 'COMPLETED'
-          wf.updatedAt = new Date().toISOString()
-          const d = simToDetail(wf)
-          const s = simToSummary(wf)
-          setWorkflows(prev =>
-            prev.map(w => (w.id === wf.id ? ({ ...s, _simDetail: d } as any) : w))
-          )
-          setDetail(d)
-        }
+      console.log('[App] Calling startWorkflow API...')
+      const res = await startWorkflow(input)
+      console.log('[App] startWorkflow response:', res)
+      const newId = (res as any)?.workflowId
+      showToast('success', 'Workflow started')
+      await refreshList()
+      if (newId) {
+        await loadDetail(newId)
       }
     } catch (err) {
+      console.error('[App] handleStartWorkflow error:', err)
       showToast('error', (err as Error).message)
     } finally {
       setIsProcessing(false)
@@ -206,14 +123,47 @@ function App() {
   }
 
   useEffect(() => {
-    if (mode === 'api') {
-      refreshList()
-    } else {
-      setWorkflows([])
-      setDetail(null)
-      setActiveWorkflowId(null)
+    refreshList()
+  }, [])
+
+  // Poll for workflow status updates when a workflow is active and running
+  useEffect(() => {
+    if (!activeWorkflowId || !detail) return
+
+    const status = detail.workflow.status.toLowerCase()
+    const isTerminal = ['completed', 'failed', 'compensated', 'cancelled'].includes(status)
+    
+    if (isTerminal) {
+      console.log('[App] Workflow reached terminal state:', status)
+      return
     }
-  }, [mode])
+
+    console.log('[App] Starting status polling for workflow:', activeWorkflowId)
+    
+    const pollInterval = setInterval(async () => {
+      try {
+        const updated = await getWorkflow(activeWorkflowId)
+        setDetail(updated)
+        
+        // Also refresh the list to update sidebar
+        const listData = await listWorkflows()
+        setWorkflows(listData.workflows)
+        
+        const newStatus = updated.workflow.status.toLowerCase()
+        if (['completed', 'failed', 'compensated', 'cancelled'].includes(newStatus)) {
+          console.log('[App] Workflow finished with status:', newStatus)
+          clearInterval(pollInterval)
+        }
+      } catch (err) {
+        console.error('[App] Polling error:', err)
+      }
+    }, 1500) // Poll every 1.5 seconds
+
+    return () => {
+      console.log('[App] Stopping polling')
+      clearInterval(pollInterval)
+    }
+  }, [activeWorkflowId, detail?.workflow.status])
 
   return (
     <div className="flex h-screen bg-[#09090b] text-zinc-100 overflow-hidden selection:bg-blue-500/30">
@@ -253,15 +203,13 @@ function App() {
                 Workflow History
               </h2>
               <div className="flex items-center gap-2">
-                {mode === 'api' && (
-                  <button
-                    onClick={refreshList}
-                    disabled={loadingList}
-                    className="text-[10px] bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded hover:bg-zinc-700 hover:text-zinc-200 disabled:opacity-50 transition-colors"
-                  >
-                    {loadingList ? '...' : '↻'}
-                  </button>
-                )}
+                <button
+                  onClick={refreshList}
+                  disabled={loadingList}
+                  className="text-[10px] bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded hover:bg-zinc-700 hover:text-zinc-200 disabled:opacity-50 transition-colors"
+                >
+                  {loadingList ? '...' : '↻'}
+                </button>
                 <span className="text-[10px] bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded">
                   {workflows.length}
                 </span>
@@ -312,7 +260,7 @@ function App() {
             </div>
             <div>
               <p className="text-xs font-medium">FlowForge Engine</p>
-              <p className="text-[10px] text-zinc-500 font-mono">API {API_BASE}</p>
+              <p className="text-[10px] text-zinc-500 font-mono">API {API_BASE || '/workflows (proxy)'}</p>
             </div>
           </div>
         </div>
@@ -330,6 +278,18 @@ function App() {
             </h2>
           </div>
           <div className="flex items-center gap-3">
+            {activeWorkflow && (
+              <button
+                onClick={() => {
+                  setActiveWorkflowId(null)
+                  setDetail(null)
+                }}
+                className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+              >
+                <Play className="w-3 h-3" />
+                New Workflow
+              </button>
+            )}
             <div className="relative group hidden md:block">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
               <input
@@ -339,16 +299,10 @@ function App() {
               />
             </div>
             <div className="h-8 w-[1px] bg-zinc-800 mx-2" />
-            <div className="flex items-center gap-1.5 bg-blue-500/10 text-blue-400 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider border border-blue-500/20">
-              <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
-                {mode === 'api' ? 'Live Engine' : 'Simulator'}
+            <div className="flex items-center gap-1.5 bg-emerald-500/10 text-emerald-400 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider border border-emerald-500/20">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              Live Backend
             </div>
-              <button
-                onClick={() => setMode(m => (m === 'api' ? 'sim' : 'api'))}
-                className="text-[10px] bg-zinc-800 px-3 py-1.5 rounded text-zinc-300 hover:text-white border border-zinc-700"
-              >
-                Switch to {mode === 'api' ? 'Simulator' : 'Live API'}
-              </button>
           </div>
         </header>
 

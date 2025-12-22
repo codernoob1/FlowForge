@@ -13,13 +13,34 @@ export const WorkflowForm: React.FC<WorkflowFormProps> = ({ onStart, isSubmittin
     sku: 'FLW-900',
     name: 'Industrial Valve X1',
     quantity: 2,
-    price: 499.0,
+    price: 99.0, // Default price that keeps total < 500 for happy path
     address: '123 Tech Lane, Silicon Valley, CA',
     failureStep: 'NONE' as SagaStepId | 'NONE',
   })
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Map failureStep to backend's expected test override fields
+    // Backend failure rules:
+    // - Payment: amount >= 500 fails
+    // - Inventory: quantity >= 10 fails  
+    // - Shipment: weight >= 50 fails
+    const getTestOverrides = (failureStep: string) => {
+      switch (failureStep) {
+        case 'CHARGE':
+          return { _testAmount: 500 } // Triggers payment failure
+        case 'RESERVE':
+          return { _testQuantity: 10 } // Triggers inventory failure
+        case 'SHIP':
+          return { _testWeight: 50 } // Triggers shipment failure
+        default:
+          return {} // NONE, VALIDATE, NOTIFY, COMPLETE - no test overrides
+      }
+    }
+
+    const testOverrides = getTestOverrides(formData.failureStep)
+
     // Normalize for API shape; passthrough fields are allowed
     const payload = {
       orderId: 'ORD-' + Math.floor(Math.random() * 99999),
@@ -38,7 +59,7 @@ export const WorkflowForm: React.FC<WorkflowFormProps> = ({ onStart, isSubmittin
         country: 'USA',
         postalCode: '00000',
       },
-      failureStep: formData.failureStep,
+      ...testOverrides, // Include the test overrides for failure simulation
     }
     onStart(payload)
   }
@@ -70,6 +91,31 @@ export const WorkflowForm: React.FC<WorkflowFormProps> = ({ onStart, isSubmittin
             className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg px-3 py-2 text-sm focus:ring-1 focus:ring-blue-500 outline-none transition-all"
           />
         </div>
+        <div className="space-y-2">
+          <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">
+            Unit Price ($)
+          </label>
+          <input
+            type="number"
+            step="0.01"
+            value={formData.price}
+            onChange={e =>
+              setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })
+            }
+            className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg px-3 py-2 text-sm focus:ring-1 focus:ring-blue-500 outline-none transition-all"
+          />
+        </div>
+        <div className="space-y-2">
+          <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">
+            Total
+          </label>
+          <div className="w-full bg-zinc-900/30 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-blue-400 font-mono">
+            ${(formData.price * formData.quantity).toFixed(2)}
+            {formData.price * formData.quantity >= 500 && (
+              <span className="text-amber-500 text-[10px] ml-2">⚠️ ≥$500 = payment fails</span>
+            )}
+          </div>
+        </div>
         <div className="space-y-2 md:col-span-2">
           <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider">
             Shipping Address
@@ -96,21 +142,34 @@ export const WorkflowForm: React.FC<WorkflowFormProps> = ({ onStart, isSubmittin
         </p>
 
         <div className="flex flex-wrap gap-2">
-          {['NONE', ...SAGA_STEPS_CONFIG.map(s => s.id)].map(step => (
-            <button
-              key={step}
-              type="button"
-              onClick={() => setFormData({ ...formData, failureStep: step as any })}
-              className={`px-3 py-1.5 rounded-md text-[10px] font-bold uppercase transition-all border ${
-                formData.failureStep === step
-                  ? 'bg-amber-500/20 border-amber-500/50 text-amber-400'
-                  : 'bg-zinc-800/30 border-zinc-700 text-zinc-500 hover:border-zinc-500'
-              }`}
-            >
-              {step === 'NONE' ? 'Happy Path' : `Fail at ${step}`}
-            </button>
-          ))}
+          {['NONE', ...SAGA_STEPS_CONFIG.map(s => s.id)].map(step => {
+            // Only these steps can be failed via test overrides in the backend
+            const canFail = ['CHARGE', 'RESERVE', 'SHIP'].includes(step)
+            const isDisabled = step !== 'NONE' && !canFail
+            
+            return (
+              <button
+                key={step}
+                type="button"
+                disabled={isDisabled}
+                onClick={() => setFormData({ ...formData, failureStep: step as any })}
+                title={isDisabled ? 'This step cannot be failed via test values' : undefined}
+                className={`px-3 py-1.5 rounded-md text-[10px] font-bold uppercase transition-all border ${
+                  formData.failureStep === step
+                    ? 'bg-amber-500/20 border-amber-500/50 text-amber-400'
+                    : isDisabled
+                      ? 'bg-zinc-900/30 border-zinc-800 text-zinc-700 cursor-not-allowed'
+                      : 'bg-zinc-800/30 border-zinc-700 text-zinc-500 hover:border-zinc-500'
+                }`}
+              >
+                {step === 'NONE' ? 'Happy Path' : `Fail at ${step}`}
+              </button>
+            )
+          })}
         </div>
+        <p className="text-[10px] text-zinc-600 mt-2">
+          💡 CHARGE, RESERVE, SHIP can be failed. VALIDATE requires invalid data; NOTIFY/COMPLETE always succeed.
+        </p>
       </div>
 
       <button
