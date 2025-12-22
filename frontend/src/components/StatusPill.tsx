@@ -1,4 +1,4 @@
-import { ReactNode } from 'react'
+import type { ReactNode } from 'react'
 
 const statusStyles: Record<string, string> = {
   running: 'bg-blue-500/15 text-blue-100 border border-blue-500/30',

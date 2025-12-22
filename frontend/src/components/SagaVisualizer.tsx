@@ -24,7 +24,6 @@ export function SagaVisualizer({ workflow }: Props) {
           const isLast = index === SAGA_STEPS_CONFIG.length - 1
           const status = step?.status ?? 'PENDING'
           const statusLower = status.toLowerCase()
-          const isCompleted = statusLower === 'completed'
           const isActive = status === 'ACTIVE'
           return (
             <React.Fragment key={config.id}>

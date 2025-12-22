@@ -40,7 +40,6 @@ function App() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [toast, setToast] = useState<Toast>(null)
   const [loadingList, setLoadingList] = useState(false)
-  const [loadingDetail, setLoadingDetail] = useState(false)
   // Removed mode toggle - always use real backend API
 
   const activeWorkflow: WorkflowInstance | null = useMemo(() => {
@@ -90,14 +89,11 @@ function App() {
 
   const loadDetail = async (id: string) => {
     setActiveWorkflowId(id)
-    setLoadingDetail(true)
     try {
       const data = await getWorkflow(id)
       setDetail(data)
     } catch (err) {
       showToast('error', (err as Error).message)
-    } finally {
-      setLoadingDetail(false)
     }
   }
 
