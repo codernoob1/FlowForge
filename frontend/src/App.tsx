@@ -216,7 +216,7 @@ function App() {
               </h2>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={refreshList}
+                  onClick={() => refreshList()}
                   disabled={loadingList}
                   className="text-[10px] bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded hover:bg-zinc-700 hover:text-zinc-200 disabled:opacity-50 transition-colors"
                 >
