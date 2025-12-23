@@ -68,15 +68,18 @@ function App() {
     }
   }, [workflows])
 
-  const refreshList = async () => {
+  const refreshList = async (showError = true) => {
     setLoadingList(true)
     try {
       const data = await listWorkflows()
       setWorkflows(data.workflows)
       // Don't auto-select a workflow - let user click to view or use the form to create
     } catch (err) {
-      setToast({ type: 'error', msg: (err as Error).message })
-      setTimeout(() => setToast(null), 4000)
+      console.error('[App] Failed to load workflow list:', err)
+      if (showError) {
+        setToast({ type: 'error', msg: (err as Error).message })
+        setTimeout(() => setToast(null), 4000)
+      }
     } finally {
       setLoadingList(false)
     }
@@ -135,25 +138,38 @@ function App() {
     }
 
     console.log('[App] Starting status polling for workflow:', activeWorkflowId)
+    let errorCount = 0
+    const maxErrors = 3
     
     const pollInterval = setInterval(async () => {
       try {
         const updated = await getWorkflow(activeWorkflowId)
         setDetail(updated)
+        errorCount = 0 // Reset on success
         
-        // Also refresh the list to update sidebar
-        const listData = await listWorkflows()
-        setWorkflows(listData.workflows)
-        
+        // Refresh list less frequently (only on status change)
         const newStatus = updated.workflow.status.toLowerCase()
         if (['completed', 'failed', 'compensated', 'cancelled'].includes(newStatus)) {
           console.log('[App] Workflow finished with status:', newStatus)
           clearInterval(pollInterval)
+          // Final refresh of list
+          try {
+            const listData = await listWorkflows()
+            setWorkflows(listData.workflows)
+          } catch {
+            // Ignore list refresh errors
+          }
         }
       } catch (err) {
-        console.error('[App] Polling error:', err)
+        errorCount++
+        console.error(`[App] Polling error (${errorCount}/${maxErrors}):`, err)
+        if (errorCount >= maxErrors) {
+          console.error('[App] Too many polling errors, stopping')
+          clearInterval(pollInterval)
+          showToast('error', 'Lost connection to backend')
+        }
       }
-    }, 1500) // Poll every 1.5 seconds
+    }, 2000) // Poll every 2 seconds
 
     return () => {
       console.log('[App] Stopping polling')
